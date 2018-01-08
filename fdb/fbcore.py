@@ -3631,7 +3631,7 @@ class Cursor(object):
         if self._ps != None:
             # Dirty trick to check whether operation when it's
             # PreparedStatement is the one we (may) have weak proxy for
-            if self._ps.__repr__.__self__ is not operation:
+            if getattr(self._ps.__repr__, '__self__', None) is not operation:
                 self._ps.close()
         if not self._transaction.active:
             self._transaction.begin()
