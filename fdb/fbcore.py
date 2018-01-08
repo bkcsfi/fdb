@@ -31,134 +31,144 @@ import decimal
 import weakref
 import threading
 
-from . import ibase
-from . import schema
-from . import monitor
-from . import utils
+from fdb import ibase
+from fdb import schema
+from fdb  import monitor
+from fdb import utils
 
 try:
-    # Python 2
-    from itertools import izip_longest
-except ImportError:
     # Python 3
     from itertools import zip_longest as izip_longest
-from fdb.ibase import (frb_info_att_charset, isc_dpb_activate_shadow,
-    isc_dpb_address_path, isc_dpb_allocation, isc_dpb_begin_log,
-    isc_dpb_buffer_length, isc_dpb_cache_manager, isc_dpb_cdd_pathname,
-    isc_dpb_connect_timeout, isc_dpb_damaged, isc_dpb_dbkey_scope,
-    isc_dpb_debug, isc_dpb_delete_shadow, isc_dpb_disable_journal,
-    isc_dpb_disable_wal, isc_dpb_drop_walfile,
-    isc_dpb_dummy_packet_interval, isc_dpb_enable_journal,
-    isc_dpb_encrypt_key, isc_dpb_force_write, isc_dpb_garbage_collect,
-    isc_dpb_gbak_attach, isc_dpb_gfix_attach, isc_dpb_gsec_attach,
-    isc_dpb_gstat_attach, isc_dpb_interp, isc_dpb_journal,
-    isc_dpb_lc_ctype, isc_dpb_lc_messages, isc_dpb_license,
-    isc_dpb_no_garbage_collect, isc_dpb_no_reserve,
-    isc_dpb_num_buffers, isc_dpb_number_of_users, isc_dpb_old_dump_id,
-    isc_dpb_old_file, isc_dpb_old_file_size, isc_dpb_old_num_files,
-    isc_dpb_old_start_file, isc_dpb_old_start_page,
-    isc_dpb_old_start_seqno, isc_dpb_online, isc_dpb_online_dump,
-    isc_dpb_overwrite, isc_dpb_page_size, isc_dpb_password,
-    isc_dpb_password_enc, isc_dpb_quit_log, isc_dpb_reserved,
-    isc_dpb_sec_attach, isc_dpb_set_db_charset,
-    isc_dpb_set_db_readonly, isc_dpb_set_db_sql_dialect,
-    isc_dpb_set_page_buffers, isc_dpb_shutdown, isc_dpb_shutdown_delay,
-    isc_dpb_sql_dialect, isc_dpb_sql_role_name, isc_dpb_sweep,
-    isc_dpb_sweep_interval, isc_dpb_sys_user_name,
-    isc_dpb_sys_user_name_enc, isc_dpb_trace, isc_dpb_user_name,
-    isc_dpb_verify, isc_dpb_version1, isc_dpb_wal_backup_dir,
-    isc_dpb_wal_bufsize, isc_dpb_wal_chkptlen,
-    isc_dpb_wal_grp_cmt_wait, isc_dpb_wal_numbufs,
-    isc_dpb_working_directory, isc_dpb_no_db_triggers, isc_dpb_nolinger,
-    isc_info_active_tran_count, isc_info_end, isc_info_truncated,
-    isc_info_sql_stmt_type, isc_info_sql_get_plan, isc_info_sql_records,
-    isc_info_req_select_count, isc_info_req_insert_count,
-    isc_info_req_update_count, isc_info_req_delete_count,
-    isc_info_blob_total_length, isc_info_blob_max_segment,
-    isc_info_blob_type, isc_info_blob_num_segments,
-    fb_info_page_contents,
-    isc_info_active_transactions, isc_info_allocation,
-    isc_info_attachment_id, isc_info_backout_count,
-    isc_info_base_level, isc_info_bpage_errors, isc_info_creation_date,
-    isc_info_cur_log_part_offset, isc_info_cur_logfile_name,
-    isc_info_current_memory,
-    isc_info_db_class, isc_info_db_id, isc_info_db_provider,
-    isc_info_db_read_only, isc_info_db_size_in_pages,
-    isc_info_db_sql_dialect, isc_info_delete_count,
-    isc_info_dpage_errors, isc_info_expunge_count, isc_info_fetches,
-    isc_info_firebird_version, isc_info_forced_writes,
-    isc_info_implementation, isc_info_insert_count,
-    isc_info_ipage_errors, isc_info_isc_version, isc_info_license,
-    isc_info_limbo, isc_info_logfile, isc_info_marks,
-    isc_info_max_memory, isc_info_next_transaction,
-    isc_info_no_reserve, isc_info_num_buffers,
-    isc_info_num_wal_buffers, isc_info_ods_minor_version,
-    isc_info_ods_version, isc_info_oldest_active,
-    isc_info_oldest_snapshot, isc_info_oldest_transaction,
-    isc_info_page_errors, isc_info_page_size, isc_info_ppage_errors,
-    isc_info_purge_count, isc_info_read_idx_count,
-    isc_info_read_seq_count, isc_info_reads, isc_info_record_errors,
-    isc_info_set_page_buffers, isc_info_sql_stmt_commit,
-    isc_info_sql_stmt_ddl, isc_info_sql_stmt_delete,
-    isc_info_sql_stmt_exec_procedure, isc_info_sql_stmt_get_segment,
-    isc_info_sql_stmt_insert, isc_info_sql_stmt_put_segment,
-    isc_info_sql_stmt_rollback, isc_info_sql_stmt_savepoint,
-    isc_info_sql_stmt_select, isc_info_sql_stmt_select_for_upd,
-    isc_info_sql_stmt_set_generator, isc_info_sql_stmt_start_trans,
-    isc_info_sql_stmt_update, isc_info_sweep_interval,
-    isc_info_tpage_errors, isc_info_tra_access,
-    isc_info_tra_concurrency, isc_info_tra_consistency,
-    isc_info_tra_id, isc_info_tra_isolation, isc_info_tra_lock_timeout,
-    isc_info_tra_no_rec_version, isc_info_tra_oldest_active,
-    isc_info_tra_oldest_interesting, isc_info_tra_oldest_snapshot,
-    isc_info_tra_read_committed, isc_info_tra_readonly,
-    isc_info_tra_readwrite, isc_info_tra_rec_version, fb_info_tra_dbpath,
-    isc_info_update_count, isc_info_user_names, isc_info_version,
-    isc_info_wal_avg_grpc_size, isc_info_wal_avg_io_size,
-    isc_info_wal_buffer_size, isc_info_wal_ckpt_length,
-    isc_info_wal_cur_ckpt_interval, isc_info_wal_grpc_wait_usecs,
-    isc_info_wal_num_commits, isc_info_wal_num_io,
-    isc_info_wal_prv_ckpt_fname, isc_info_wal_prv_ckpt_poffset,
-    isc_info_wal_recv_ckpt_fname, isc_info_wal_recv_ckpt_poffset,
-    isc_info_window_turns, isc_info_writes, isc_tpb_autocommit,
+except ImportError:
+    # Python 2
+    try:
+        from itertools import izip_longest
+    except ImportError:
+       # python 2.3
+        class ZipExhausted(Exception):
+            pass
 
-    isc_tpb_commit_time, isc_tpb_concurrency, isc_tpb_consistency,
-    isc_tpb_exclusive, isc_tpb_ignore_limbo, isc_tpb_lock_read,
-    isc_tpb_lock_timeout, isc_tpb_lock_write, isc_tpb_no_auto_undo,
-    isc_tpb_no_rec_version, isc_tpb_nowait, isc_tpb_protected,
-    isc_tpb_read, isc_tpb_read_committed, isc_tpb_rec_version,
-    isc_tpb_restart_requests, isc_tpb_shared, isc_tpb_verb_time,
-    isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
+        def izip_longest(*args, **kwds):
+            # izip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
+            fillvalue = kwds.get('fillvalue')
+            counter = [len(args) - 1]
+            def sentinel():
+                if not counter[0]:
+                    raise ZipExhausted
+                counter[0] -= 1
+                yield fillvalue
+            fillers = repeat(fillvalue)
+            iterators = [chain(it, sentinel(), fillers) for it in args]
+            try:
+                while iterators:
+                    yield tuple(map(next, iterators))
+            except ZipExhausted:
+                pass
 
-    b, s, ord2, int2byte, mychr, mybytes, myunicode, mylong, StringType,
-    IntType, LongType, FloatType, ListType, UnicodeType, TupleType, xrange,
-    charset_map,
-
-    #isc_sqlcode, isc_sql_interprete, fb_interpret, isc_dsql_execute_immediate,
-    XSQLDA_PTR, ISC_SHORT, ISC_LONG, ISC_SCHAR, ISC_UCHAR, ISC_QUAD,
-    ISC_DATE, ISC_TIME,
-    SHRT_MIN, SHRT_MAX, USHRT_MAX, INT_MIN, INT_MAX, LONG_MIN, LONG_MAX,
-
-
-    SQL_TEXT, SQL_VARYING, SQL_SHORT, SQL_LONG, SQL_FLOAT, SQL_DOUBLE,
-    SQL_D_FLOAT, SQL_TIMESTAMP, SQL_BLOB, SQL_ARRAY, SQL_QUAD, SQL_TYPE_TIME,
-    SQL_TYPE_DATE, SQL_INT64, SQL_BOOLEAN, SUBTYPE_NUMERIC, SUBTYPE_DECIMAL,
-    MAX_BLOB_SEGMENT_SIZE, ISC_INT64,
-
-    XSQLVAR, ISC_TEB, RESULT_VECTOR, ISC_STATUS, ISC_STATUS_ARRAY, ISC_STATUS_PTR,
-    ISC_EVENT_CALLBACK, ISC_ARRAY_DESC,
-
-    blr_varying, blr_varying2, blr_text, blr_text2, blr_short, blr_long,
-    blr_int64, blr_float, blr_d_float, blr_double, blr_timestamp, blr_sql_date,
-    blr_sql_time, blr_cstring, blr_quad, blr_blob,
-
-    SQLDA_version1, isc_segment,
-
-    isc_db_handle, isc_tr_handle, isc_stmt_handle, isc_blob_handle,
-
-    fbclient_API,
-
-    )
+from fdb.ibase import frb_info_att_charset, isc_dpb_activate_shadow, \
+    isc_dpb_address_path, isc_dpb_allocation, isc_dpb_begin_log, \
+    isc_dpb_buffer_length, isc_dpb_cache_manager, isc_dpb_cdd_pathname, \
+    isc_dpb_connect_timeout, isc_dpb_damaged, isc_dpb_dbkey_scope, \
+    isc_dpb_debug, isc_dpb_delete_shadow, isc_dpb_disable_journal, \
+    isc_dpb_disable_wal, isc_dpb_drop_walfile, \
+    isc_dpb_dummy_packet_interval, isc_dpb_enable_journal, \
+    isc_dpb_encrypt_key, isc_dpb_force_write, isc_dpb_garbage_collect, \
+    isc_dpb_gbak_attach, isc_dpb_gfix_attach, isc_dpb_gsec_attach, \
+    isc_dpb_gstat_attach, isc_dpb_interp, isc_dpb_journal, \
+    isc_dpb_lc_ctype, isc_dpb_lc_messages, isc_dpb_license, \
+    isc_dpb_no_garbage_collect, isc_dpb_no_reserve, \
+    isc_dpb_num_buffers, isc_dpb_number_of_users, isc_dpb_old_dump_id, \
+    isc_dpb_old_file, isc_dpb_old_file_size, isc_dpb_old_num_files, \
+    isc_dpb_old_start_file, isc_dpb_old_start_page, \
+    isc_dpb_old_start_seqno, isc_dpb_online, isc_dpb_online_dump, \
+    isc_dpb_overwrite, isc_dpb_page_size, isc_dpb_password, \
+    isc_dpb_password_enc, isc_dpb_quit_log, isc_dpb_reserved, \
+    isc_dpb_sec_attach, isc_dpb_set_db_charset, \
+    isc_dpb_set_db_readonly, isc_dpb_set_db_sql_dialect, \
+    isc_dpb_set_page_buffers, isc_dpb_shutdown, isc_dpb_shutdown_delay, \
+    isc_dpb_sql_dialect, isc_dpb_sql_role_name, isc_dpb_sweep, \
+    isc_dpb_sweep_interval, isc_dpb_sys_user_name, \
+    isc_dpb_sys_user_name_enc, isc_dpb_trace, isc_dpb_user_name, \
+    isc_dpb_verify, isc_dpb_version1, isc_dpb_wal_backup_dir, \
+    isc_dpb_wal_bufsize, isc_dpb_wal_chkptlen, \
+    isc_dpb_wal_grp_cmt_wait, isc_dpb_wal_numbufs, \
+    isc_dpb_working_directory, isc_dpb_no_db_triggers, isc_dpb_nolinger, \
+    isc_info_active_tran_count, isc_info_end, isc_info_truncated, \
+    isc_info_sql_stmt_type, isc_info_sql_get_plan, isc_info_sql_records, \
+    isc_info_req_select_count, isc_info_req_insert_count, \
+    isc_info_req_update_count, isc_info_req_delete_count, \
+    isc_info_blob_total_length, isc_info_blob_max_segment, \
+    isc_info_blob_type, isc_info_blob_num_segments, \
+    fb_info_page_contents, \
+    isc_info_active_transactions, isc_info_allocation, \
+    isc_info_attachment_id, isc_info_backout_count, \
+    isc_info_base_level, isc_info_bpage_errors, isc_info_creation_date, \
+    isc_info_cur_log_part_offset, isc_info_cur_logfile_name, \
+    isc_info_current_memory, \
+    isc_info_db_class, isc_info_db_id, isc_info_db_provider, \
+    isc_info_db_read_only, isc_info_db_size_in_pages, \
+    isc_info_db_sql_dialect, isc_info_delete_count, \
+    isc_info_dpage_errors, isc_info_expunge_count, isc_info_fetches, \
+    isc_info_firebird_version, isc_info_forced_writes, \
+    isc_info_implementation, isc_info_insert_count, \
+    isc_info_ipage_errors, isc_info_isc_version, isc_info_license, \
+    isc_info_limbo, isc_info_logfile, isc_info_marks, \
+    isc_info_max_memory, isc_info_next_transaction, \
+    isc_info_no_reserve, isc_info_num_buffers, \
+    isc_info_num_wal_buffers, isc_info_ods_minor_version, \
+    isc_info_ods_version, isc_info_oldest_active, \
+    isc_info_oldest_snapshot, isc_info_oldest_transaction, \
+    isc_info_page_errors, isc_info_page_size, isc_info_ppage_errors, \
+    isc_info_purge_count, isc_info_read_idx_count, \
+    isc_info_read_seq_count, isc_info_reads, isc_info_record_errors, \
+    isc_info_set_page_buffers, isc_info_sql_stmt_commit, \
+    isc_info_sql_stmt_ddl, isc_info_sql_stmt_delete, \
+    isc_info_sql_stmt_exec_procedure, isc_info_sql_stmt_get_segment, \
+    isc_info_sql_stmt_insert, isc_info_sql_stmt_put_segment, \
+    isc_info_sql_stmt_rollback, isc_info_sql_stmt_savepoint, \
+    isc_info_sql_stmt_select, isc_info_sql_stmt_select_for_upd, \
+    isc_info_sql_stmt_set_generator, isc_info_sql_stmt_start_trans, \
+    isc_info_sql_stmt_update, isc_info_sweep_interval, \
+    isc_info_tpage_errors, isc_info_tra_access, \
+    isc_info_tra_concurrency, isc_info_tra_consistency, \
+    isc_info_tra_id, isc_info_tra_isolation, isc_info_tra_lock_timeout, \
+    isc_info_tra_no_rec_version, isc_info_tra_oldest_active, \
+    isc_info_tra_oldest_interesting, isc_info_tra_oldest_snapshot, \
+    isc_info_tra_read_committed, isc_info_tra_readonly, \
+    isc_info_tra_readwrite, isc_info_tra_rec_version, fb_info_tra_dbpath, \
+    isc_info_update_count, isc_info_user_names, isc_info_version, \
+    isc_info_wal_avg_grpc_size, isc_info_wal_avg_io_size, \
+    isc_info_wal_buffer_size, isc_info_wal_ckpt_length, \
+    isc_info_wal_cur_ckpt_interval, isc_info_wal_grpc_wait_usecs, \
+    isc_info_wal_num_commits, isc_info_wal_num_io, \
+    isc_info_wal_prv_ckpt_fname, isc_info_wal_prv_ckpt_poffset, \
+    isc_info_wal_recv_ckpt_fname, isc_info_wal_recv_ckpt_poffset, \
+    isc_info_window_turns, isc_info_writes, isc_tpb_autocommit, \
+    isc_tpb_commit_time, isc_tpb_concurrency, isc_tpb_consistency, \
+    isc_tpb_exclusive, isc_tpb_ignore_limbo, isc_tpb_lock_read, \
+    isc_tpb_lock_timeout, isc_tpb_lock_write, isc_tpb_no_auto_undo, \
+    isc_tpb_no_rec_version, isc_tpb_nowait, isc_tpb_protected, \
+    isc_tpb_read, isc_tpb_read_committed, isc_tpb_rec_version, \
+    isc_tpb_restart_requests, isc_tpb_shared, isc_tpb_verb_time, \
+    isc_tpb_version3, isc_tpb_wait, isc_tpb_write, \
+    b, s, ord2, int2byte, mychr, mybytes, myunicode, mylong, StringType, \
+    IntType, LongType, FloatType, ListType, UnicodeType, TupleType, xrange, \
+    charset_map, \
+    XSQLDA_PTR, ISC_SHORT, ISC_LONG, ISC_SCHAR, ISC_UCHAR, ISC_QUAD, \
+    ISC_DATE, ISC_TIME, \
+    SHRT_MIN, SHRT_MAX, USHRT_MAX, INT_MIN, INT_MAX, LONG_MIN, LONG_MAX, \
+    SQL_TEXT, SQL_VARYING, SQL_SHORT, SQL_LONG, SQL_FLOAT, SQL_DOUBLE, \
+    SQL_D_FLOAT, SQL_TIMESTAMP, SQL_BLOB, SQL_ARRAY, SQL_QUAD, SQL_TYPE_TIME, \
+    SQL_TYPE_DATE, SQL_INT64, SQL_BOOLEAN, SUBTYPE_NUMERIC, SUBTYPE_DECIMAL, \
+    MAX_BLOB_SEGMENT_SIZE, ISC_INT64, \
+    XSQLVAR, ISC_TEB, RESULT_VECTOR, ISC_STATUS, ISC_STATUS_ARRAY, ISC_STATUS_PTR, \
+    ISC_EVENT_CALLBACK, ISC_ARRAY_DESC, \
+    blr_varying, blr_varying2, blr_text, blr_text2, blr_short, blr_long, \
+    blr_int64, blr_float, blr_d_float, blr_double, blr_timestamp, blr_sql_date, \
+    blr_sql_time, blr_cstring, blr_quad, blr_blob, \
+    SQLDA_version1, isc_segment, \
+    isc_db_handle, isc_tr_handle, isc_stmt_handle, isc_blob_handle, \
+    fbclient_API
 
 PYTHON_MAJOR_VER = sys.version_info[0]
 
@@ -308,7 +318,11 @@ _FS_ENCODING = sys.getfilesystemencoding()
 DIST_TRANS_MAX_DATABASES = 16
 
 def bs(byte_array):
-    return bytes(byte_array) if PYTHON_MAJOR_VER == 3 else ''.join((chr(c) for c in byte_array))
+    if PYTHON_MAJOR_VER == 3:
+        return bytes(byte_array)
+    else:
+        return ''.join([chr(c) for c in byte_array])
+
 
 ISOLATION_LEVEL_READ_COMMITED_LEGACY = bs([isc_tpb_version3,
                                            isc_tpb_write,
@@ -682,8 +696,8 @@ def connect(dsn='', user=None, password=None, host=None, port=None, database=Non
     load_api(fb_library_name)
     if connection_class == None:
         connection_class = Connection
-    if not issubclass(connection_class,Connection):
-        raise ProgrammingError("'connection_class' must be subclass of Connection")
+#    if not issubclass(connection_class,Connection):
+#        raise ProgrammingError("'connection_class' must be subclass of Connection, not %r" % connection_class)
     if not user:
         user = os.environ.get('ISC_USER', None)
     if not password:
@@ -1289,7 +1303,10 @@ class Connection(object):
            :mod:`fdb.services`).
         """
         self.__check_attached()
-        buf_size = 256 if info_code != fb_info_page_contents else self.page_size + 10
+        if info_code != fb_info_page_contents:
+            buf_size = 256
+        else:
+	       buf_size = self.page_size + 10
         request_buffer = bs([info_code])
         if info_code == fb_info_page_contents:
             request_buffer += int_to_bytes(2, 2)
@@ -1532,7 +1549,10 @@ class Connection(object):
                 pos = 1 # Skip inital byte (info_code)
                 while pos < len(buf):
                     tid_size = struct.unpack('<H',buf[pos:pos+uShortSize])[0]
-                    fmt = '<I' if tid_size == 4 else '<L'
+                    if tid_size == 4:
+                        fmt = '<I'
+                    else:
+                        '<L'
                     pos += uShortSize
                     transactions.append(struct.unpack(fmt, buf[pos:pos+tid_size])[0])
                     pos += tid_size
@@ -1867,8 +1887,8 @@ class Connection(object):
         "Returns True if database is read-only."
         return self.db_info(isc_info_db_read_only) != 0
 
-@utils.embed_attributes(schema.Schema,'schema')
-class ConnectionWithSchema(Connection):
+#@utils.embed_attributes(schema.Schema,'schema')
+class XConnectionWithSchema(Connection):
     """:class:`Connection` descendant that exposes all attributes of encapsulated
     :class:`~fdb.schema.Schema` instance directly as connection attributes, except
     :meth:`~fdb.schema.Schema.close` and :meth:`~fdb.schema.Schema.bind`, and
@@ -1881,7 +1901,7 @@ class ConnectionWithSchema(Connection):
     """
     def __init__(self, db_handle, dpb=None, sql_dialect=3, charset=None,
                  isolation_level=ISOLATION_LEVEL_READ_COMMITED):
-        super(ConnectionWithSchema,self).__init__(db_handle,dpb,sql_dialect,charset,
+        super(XConnectionWithSchema,self).__init__(db_handle,dpb,sql_dialect,charset,
                                                   isolation_level)
         self.__schema = schema.Schema()
         self.__schema.bind(self)
@@ -1895,6 +1915,12 @@ class ConnectionWithSchema(Connection):
                     setattr(self,attr,val)
     def _get_schema(self):
         return self.__schema
+
+def ConnectionWithSchema(*args, **kw):
+    wrapper = utils.embed_attributes(schema.Schema,'schema')
+    return wrapper(
+        XConnectionWithSchema(*args, **kw)
+    )
 
 
 class EventBlock(object):
@@ -3261,7 +3287,10 @@ class PreparedStatement(object):
             self._name = None
             if is_dead_proxy(self.cursor):
                 self.cursor = None
-            connection = self.cursor._connection if self.cursor else None
+            if self.cursor:
+                connection = self.cursor._connection
+            else:
+	        connection = None
             if (not connection) or (connection and not connection.closed):
                 api.isc_dsql_free_statement(self._isc_status, stmt_handle, ibase.DSQL_drop)
                 if (db_api_error(self._isc_status)
@@ -4001,7 +4030,7 @@ class Transaction(object):
                     self.commit()
                 else:
                     self.rollback()
-            except Exception as e:
+            except Exception,  e:
                 self._tr_handle = None
                 raise e
     def begin(self, tpb=None):
@@ -4031,7 +4060,10 @@ class Transaction(object):
             raise ProgrammingError("Transaction is permanently closed.")
         self._finish()  # Make sure that previous transaction (if any) is ended
         self._tr_handle = isc_tr_handle(0)
-        _tpb = tpb if tpb else self.default_tpb
+        if tpb:
+            _tpb = tpb
+        else:
+            _tpb = self.default_tpb
         if isinstance(_tpb, TPB):
             _tpb = _tpb.render()
         elif isinstance(_tpb, (ListType, TupleType)):
@@ -4146,7 +4178,7 @@ class Transaction(object):
         exc = None
         try:
             self._finish()
-        except Exception as e:
+        except Exception, e:
             exc = e
         del self._cursors[:]
         del self._connections[:]
@@ -4396,7 +4428,7 @@ class ConnectionGroup(object):
             try:
                 self._transaction.default_action = 'rollback'
                 self._transaction.close()
-            except Exception as e:
+            except Exception, e:
                 exc = e
         self._transaction = None
         self.clear()
@@ -4857,7 +4889,8 @@ class BlobReader(object):
             result.append(line)
             line = self.readline()
         return result
-    def seek(self, offset, whence = os.SEEK_SET):
+    def seek(self, offset, whence = 0 # 0 == os.SEEK_SET
+        ):
         """Set the file’s current position, like stdio‘s `fseek()`.
         See :meth:`file.seek` details.
 

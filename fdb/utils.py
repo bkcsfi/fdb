@@ -20,8 +20,8 @@
 
 def update_meta (self, other):
     "Helper function for :class:`LateBindingProperty` class."
-    self.__name__ = other.__name__
-    self.__doc__ = other.__doc__
+#    self.__name__ = other.__name__
+#    self.__doc__ = other.__doc__
     self.__dict__.update(other.__dict__)
     return self
 
@@ -208,3 +208,47 @@ from another class instance embedded in class instances.
         return class_
     return d
 
+try:
+    from itertools import groupby
+except ImportError:
+    import itertools
+    class groupby(object):
+        def __init__(self, iterable, key=None):
+            if key is None:
+                key = lambda x: x
+            self.keyfunc = key
+            self.it = iter(iterable)
+            self.tgtkey = self.currkey = self.currvalue = xrange(0)
+        def __iter__(self):
+            return self
+        def next(self):
+            while self.currkey == self.tgtkey:
+                self.currvalue = self.it.next() # Exit on StopIteration
+                self.currkey = self.keyfunc(self.currvalue)
+            self.tgtkey = self.currkey
+            return (self.currkey, self._grouper(self.tgtkey))
+        def _grouper(self, tgtkey):
+            while self.currkey == tgtkey:
+                yield self.currvalue
+                self.currvalue = self.it.next() # Exit on StopIteration
+                self.currkey = self.keyfunc(self.currvalue)
+
+
+import Queue
+import heapq
+class PriorityQueue(Queue.Queue):
+    '''Variant of Queue that retrieves open entries in priority order (lowest first).
+    Entries are typically tuples of the form:  (priority number, data).
+    '''
+
+    def _init(self, maxsize):
+        self.queue = []
+
+    def _qsize(self, len=len):
+        return len(self.queue)
+
+    def _put(self, item, heappush=heapq.heappush):
+        heappush(self.queue, item)
+
+    def _get(self, heappop=heapq.heappop):
+        return heappop(self.queue)

@@ -25,7 +25,7 @@ import fdb
 from fdb.utils import LateBindingProperty
 import string
 import weakref
-from itertools import groupby
+from fdb.utils import groupby
 
 # Firebird Field Types
 
@@ -333,8 +333,8 @@ def get_grants(privileges,grantors=None):
         g = list(g)
         item = g[0]
         if item.has_grant():
-            admin_option = ' WITH %s OPTION' % ('ADMIN' if item.privilege == 'M'
-                                                else 'GRANT')
+            admin_option = ' WITH %s OPTION' % (item.privilege == 'M' and 'ADMIN'
+                                                or 'GRANT')
         else:
             admin_option = ''
         uname = item.user_name
@@ -359,7 +359,7 @@ def get_grants(privileges,grantors=None):
             if item.privilege in tp:
                 privilege = tp[item.privilege]
                 if len(items) > 1:
-                    privilege += '(%s)' % ','.join(i.field_name for i in items if i.field_name)
+                    privilege += '(%s)' % ','.join([i.field_name for i in items if i.field_name])
                 elif item.field_name is not None:
                     privilege += '(%s)' % item.field_name
                 priv_list.append(privilege)
@@ -941,13 +941,13 @@ FROM RDB$FILTERS""")
         # Load enumerate types defined in RDB$TYPES table
         enum_select = 'select RDB$TYPE, RDB$TYPE_NAME from RDB$TYPES where RDB$FIELD_NAME = ?'
         def enum_dict(enum_type):
-            return dict((key,value.strip()) for key, value
-                        in self._ic.execute(enum_select,(enum_type,)))
+            return dict([(key,value.strip()) for key, value
+                        in self._ic.execute(enum_select,(enum_type,))])
         # Object types
         self.enum_object_types = enum_dict('RDB$OBJECT_TYPE')
         # Object type codes
-        self.enum_object_type_codes = dict(((value,key) for key,value
-                                            in self.enum_object_types.items()))
+        self.enum_object_type_codes = dict([(value,key) for key,value
+                                            in self.enum_object_types.items()])
         # Character set names
         self.enum_character_set_names = enum_dict('RDB$CHARACTER_SET_NAME')
         # Field types
@@ -1113,13 +1113,13 @@ database objects.
                 for package in self.packages:
                     script.append(package.get_sql_for('create'))
             elif section == SCRIPT_FUNCTION_DEFS:
-                for func in (x for x in self.functions if
+                for func in [x for x in self.functions if
                              not x.isexternal() and
-                             not x.ispackaged()):
+                             not x.ispackaged()]:
                     script.append(func.get_sql_for('create',no_code=True))
             elif section == SCRIPT_PROCEDURE_DEFS:
-                for proc in (x for x in self.procedures
-                             if not x.ispackaged()):
+                for proc in [x for x in self.procedures
+                             if not x.ispackaged()]:
                     script.append(proc.get_sql_for('create',no_code=True))
             elif section == SCRIPT_TABLES:
                 for table in self.tables:
@@ -1127,28 +1127,28 @@ database objects.
                                                     no_pk=True,
                                                     no_unique=True))
             elif section == SCRIPT_PRIMARY_KEYS:
-                for constraint in (x for x in self.constraints
-                             if x.ispkey()):
+                for constraint in [x for x in self.constraints
+                             if x.ispkey()]:
                     script.append(constraint.get_sql_for('create'))
             elif section == SCRIPT_UNIQUE_CONSTRAINTS:
                 for table in self.tables:
-                    for constraint in (x for x in table.constraints
-                             if x.isunique()):
+                    for constraint in [x for x in table.constraints
+                             if x.isunique()]:
                         script.append(constraint.get_sql_for('create'))
             elif section == SCRIPT_CHECK_CONSTRAINTS:
                 for table in self.tables:
-                    for constraint in (x for x in table.constraints
-                             if x.ischeck()):
+                    for constraint in [x for x in table.constraints
+                             if x.ischeck()]:
                         script.append(constraint.get_sql_for('create'))
             elif section == SCRIPT_FOREIGN_CONSTRAINTS:
                 for table in self.tables:
-                    for constraint in (x for x in table.constraints
-                                 if x.isfkey()):
+                    for constraint in [x for x in table.constraints
+                                 if x.isfkey()]:
                         script.append(constraint.get_sql_for('create'))
             elif section == SCRIPT_INDICES:
                 for table in self.tables:
-                    for index in (x for x in table.indices
-                                  if not x.isenforcer()):
+                    for index in [x for x in table.indices
+                                  if not x.isenforcer()]:
                         script.append(index.get_sql_for('create'))
             elif section == SCRIPT_VIEWS:
                 seen = []
@@ -1159,25 +1159,25 @@ database objects.
                 for package in self.packages:
                     script.append(package.get_sql_for('create',body=True))
             elif section == SCRIPT_PROCEDURE_BODIES:
-                for proc in (x for x in self.procedures
-                             if not x.ispackaged()):
+                for proc in [x for x in self.procedures
+                             if not x.ispackaged()]:
                     script.append('ALTER' + proc.get_sql_for('create')[6:])
             elif section == SCRIPT_FUNCTION_BODIES:
-                for func in (x for x in self.functions if
+                for func in [x for x in self.functions if
                              not x.isexternal() and
-                             not x.ispackaged()):
+                             not x.ispackaged()]:
                     script.append('ALTER' + func.get_sql_for('create')[6:])
             elif section == SCRIPT_TRIGGERS:
                 for trigger in self.triggers:
                     script.append(trigger.get_sql_for('create'))
             elif section == SCRIPT_ROLES:
-                for role in (x for x in self.roles
-                             if not x.issystemobject()):
+                for role in [x for x in self.roles
+                             if not x.issystemobject()]:
                     script.append(role.get_sql_for('create'))
             elif section == SCRIPT_GRANTS:
-                for priv in (x for x in self.privileges
+                for priv in [x for x in self.privileges
                              if x.user_name != 'SYSDBA'
-                             and not x.subject.issystemobject()):
+                             and not x.subject.issystemobject()]:
                     script.append(priv.get_sql_for('grant'))
             elif section == SCRIPT_COMMENTS:
                 for objects in [self.character_sets,self.collations,
@@ -1399,7 +1399,10 @@ class BaseSchemaItem(object):
     #: Weak reference to parent :class:`Schema` instance.
     schema = None
     def __init__(self,schema,attributes):
-        self.schema = schema if type(schema) == weakref.ProxyType else weakref.proxy(schema)
+        if type(schema) == weakref.ProxyType:
+            self.schema = schema
+        else:
+            self.schema = weakref.proxy(schema)
         self._type_code = []
         self._attributes = dict(attributes)
         self._actions = []
@@ -1461,7 +1464,7 @@ class BaseSchemaItem(object):
         visitor.visitMetadataItem(self)
     def issystemobject(self):
         "Returns True if this database object is system object."
-        return True if self._attributes.get('RDB$SYSTEM_FLAG',False) else False
+        return self._attributes.get('RDB$SYSTEM_FLAG',False) and True or False
     def get_quoted_name(self):
         "Returns quoted (if necessary) name."
         return self._get_quoted_ident(self.name)
@@ -1516,6 +1519,10 @@ class Collation(BaseSchemaItem):
         return 'DROP COLLATION %s' % self.get_quoted_name()
     def _get_create_sql(self,**params):
         self._check_params(params,[])
+        if not self.isbasedonexternal():
+            source_type = "FROM %s" % self.base_collation.get_quoted_name()
+        else:
+            source_type = "FROM EXTERNAL ('%s')" % self._attributes['RDB$BASE_COLLATION_NAME']
         base_sql = """CREATE COLLATION %s
    FOR %s
    %s
@@ -1524,17 +1531,16 @@ class Collation(BaseSchemaItem):
    %s
    %s""" % (self.get_quoted_name(),
             self.character_set.get_quoted_name(),
-            ("FROM EXTERNAL ('%s')" % self._attributes['RDB$BASE_COLLATION_NAME']
-             if self.isbasedonexternal()
-             else "FROM %s" % self.base_collation.get_quoted_name()),
-            'PAD SPACE' if self.ispadded() else 'NO PAD',
-            'CASE INSENSITIVE' if self.iscaseinsensitive() else 'CASE SENSITIVE',
-            'ACCENT INSENSITIVE' if self.isaccentinsensitive() else 'ACCENT SENSITIVE',
-            "'%s'" % self.specific_attributes if self.specific_attributes else '')
+            source_type,
+            self.ispadded() and 'PAD SPACE' or 'NO PAD',
+            self.iscaseinsensitive() and 'CASE INSENSITIVE' or 'CASE SENSITIVE',
+            self.isaccentinsensitive() and 'ACCENT INSENSITIVE' or 'ACCENT SENSITIVE',
+            "'%s'" % (self.specific_attributes or '')
+            )
         return base_sql.strip()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON COLLATION %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$COLLATION_NAME']
     def _get_id(self):
@@ -1545,7 +1551,7 @@ class Collation(BaseSchemaItem):
         return self.schema.get_character_set_by_id(self._attributes['RDB$CHARACTER_SET_ID'])
     def _get_base_collation(self):
         base_name = self._attributes['RDB$BASE_COLLATION_NAME']
-        return self.schema.get_collation(base_name) if base_name else None
+        return base_name and self.schema.get_collation(base_name) or None
     def _get_attributes(self):
         return self._attributes['RDB$COLLATION_ATTRIBUTES']
     def _get_specific_attributes(self):
@@ -1619,12 +1625,12 @@ class CharacterSet(BaseSchemaItem):
         collation = params.get('collation')
         if collation:
             return ('ALTER CHARACTER SET %s SET DEFAULT COLLATION %s' % (self.get_quoted_name(),
-                    collation.get_quoted_name() if isinstance(collation,Collation) else collation))
+                    isinstance(collation,Collation) and collation.get_quoted_name() or collation))
         else:
             raise fdb.ProgrammingError("Missing required parameter: 'collation'.")
     def _get_comment_sql(self,**params):
         return 'COMMENT ON CHARACTER SET %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$CHARACTER_SET_NAME']
     def _get_id(self):
@@ -1722,7 +1728,7 @@ class DatabaseException(BaseSchemaItem):
         return 'DROP EXCEPTION %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON EXCEPTION %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$EXCEPTION_NAME']
     def _get_id(self):
@@ -1795,7 +1801,7 @@ class Sequence(BaseSchemaItem):
     def _get_comment_sql(self,**params):
         return 'COMMENT ON %s %s IS %s' % (self.schema.opt_generator_keyword,
           self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL'  or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$GENERATOR_NAME']
     def _get_id(self):
@@ -1900,7 +1906,7 @@ class TableColumn(BaseSchemaItem):
     def _get_comment_sql(self,**params):
         return 'COMMENT ON COLUMN %s.%s IS %s' % (self.table.get_quoted_name(),
             self.get_quoted_name(),
-            'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+            (self.description is None) and 'NULL'  or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$FIELD_NAME']
     def _get_id(self):
@@ -2023,10 +2029,10 @@ class Index(BaseSchemaItem):
 
     def _get_create_sql(self,**params):
         self._check_params(params,[])
-        return """CREATE %s%s INDEX %s ON %s %s""" % ('UNIQUE ' if self.isunique() else '',
+        return """CREATE %s%s INDEX %s ON %s %s""" % (self.isunique() and 'UNIQUE ' or '',
                   self.index_type, self.get_quoted_name(),self.table.name,
-                  'COMPUTED BY %s' % self.expression if self.isexpression()
-                  else '(%s)' % ','.join(self.segment_names))
+                  self.isexpression() and ('COMPUTED BY %s' % self.expression)
+                  or '(%s)' % ','.join(self.segment_names))
     def _get_activate_sql(self,**params):
         self._check_params(params,[])
         return 'ALTER INDEX %s ACTIVE' % self.get_quoted_name()
@@ -2041,7 +2047,7 @@ class Index(BaseSchemaItem):
         return 'DROP INDEX %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON INDEX %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$INDEX_NAME']
     def _get_table(self):
@@ -2049,11 +2055,11 @@ class Index(BaseSchemaItem):
     def _get_id(self):
         return self._attributes['RDB$INDEX_ID']
     def _get_index_type(self):
-        return (INDEX_TYPE_DESCENDING if self._attributes['RDB$INDEX_TYPE'] == 1
-                else INDEX_TYPE_ASCENDING)
+        return ((self._attributes['RDB$INDEX_TYPE'] == 1) and INDEX_TYPE_DESCENDING
+                or INDEX_TYPE_ASCENDING)
     def _get_partner_index(self):
         pname = self._attributes['RDB$FOREIGN_KEY']
-        return self.schema.get_index(pname) if pname else None
+        return pname and self.schema.get_index(pname) or None
     def _get_expression(self):
         return self._attributes['RDB$EXPRESSION_SOURCE']
     def _get_statistics(self):
@@ -2160,7 +2166,7 @@ class ViewColumn(BaseSchemaItem):
     def _get_comment_sql(self,**params):
         return 'COMMENT ON COLUMN %s.%s IS %s' % (self.view.get_quoted_name(),
             self.get_quoted_name(),
-            'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+            (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$FIELD_NAME']
     def _get_base_field(self):
@@ -2292,11 +2298,15 @@ class Domain(BaseSchemaItem):
         if new_name:
             return '%s TO %s' % (sql,self._get_quoted_ident(new_name))
         elif new_default != '':
-            return ('%s SET DEFAULT %s' % (sql,new_default) if new_default
-                    else '%s DROP DEFAULT' % sql)
+            if new_default:
+                return '%s SET DEFAULT %s' % (sql,new_default)
+            else:
+                return '%s DROP DEFAULT' % sql
         elif new_constraint != '':
-            return ('%s ADD CHECK (%s)' % (sql,new_constraint) if new_constraint
-                    else '%s DROP CONSTRAINT' % sql)
+            if new_constraint:
+                return '%s ADD CHECK (%s)' % (sql,new_constraint)
+            else:
+                return '%s DROP CONSTRAINT' % sql
         elif new_type:
             return '%s TYPE %s' % (sql,new_type)
         else:
@@ -2306,7 +2316,7 @@ class Domain(BaseSchemaItem):
         return 'DROP DOMAIN %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON DOMAIN %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL'  or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$FIELD_NAME']
     def _get_expression(self):
@@ -2368,11 +2378,14 @@ class Domain(BaseSchemaItem):
             else:
                 l.append(COLUMN_TYPES[self.field_type])
         if self.field_type in (FBT_CHAR,FBT_VARCHAR):
-            l.append('(%d)' % (self.length if self.character_length == None else self.character_length))
+            if self.character_length == None:
+                l.append('(%d)' % self.length)
+            else:
+                l.append('(%d)' % self.character_length)
         if self._attributes['RDB$DIMENSIONS'] != None:
-            l.append('[%s]' % ', '.join('%d' % u if l == 1
-                                        else '%d:%d' % (l,u)
-                                        for l,u in self.dimensions))
+            l.append('[%s]' % ', '.join([(il == 1) and ('%d' % u) or
+                                        ('%d:%d' % (il,u))
+                                        for il,u in self.dimensions]))
         if self.field_type == FBT_BLOB:
             if self.sub_type >= 0 and self.sub_type <= MAX_BLOBSUBTYPES:
                 l.append(' SUB_TYPE %s' % BLOB_SUBTYPES[self.sub_type])
@@ -2657,7 +2670,7 @@ class Constraint(BaseSchemaItem):
         if self.ischeck():
             const_def += self.triggers[0].source
         elif self.ispkey() or self.isunique():
-            const_def += 'PRIMARY KEY' if self.ispkey() else 'UNIQUE'
+            const_def += self.ispkey() and 'PRIMARY KEY' or 'UNIQUE'
             i = self.index
             const_def +=  ' (%s)' % ','.join(i.segment_names)
             if not i.issystemobject():
@@ -2799,7 +2812,7 @@ class Table(BaseSchemaItem):
             no_pk = params.get('no_pk',False)
             no_unique = params.get('no_unique',False)
             #
-            tabdef = 'CREATE %sTABLE %s' % ('GLOBAL TEMPORARY ' if self.isgtt() else '',
+            tabdef = 'CREATE %sTABLE %s' % (self.isgtt() and 'GLOBAL TEMPORARY ' or '',
                                             self.get_quoted_name())
             if self.isexternal():
                 tabdef += "  EXTERNAL FILE '%s'\n" % self.external_file
@@ -2859,14 +2872,14 @@ class Table(BaseSchemaItem):
             tabdef += ','.join(partdefs)
             tabdef += '\n)'
             return tabdef
-        except Exception as e:
+        except Exception, e:
             raise e
     def _get_drop_sql(self,**params):
         self._check_params(params,[])
         return 'DROP TABLE %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON TABLE %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL'  or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$RELATION_NAME']
     def _get_id(self):
@@ -3030,8 +3043,8 @@ class View(BaseSchemaItem):
         check = params.get('check',False)
         if query:
             return "ALTER VIEW %s %s\n   AS\n     %s" % (self.get_quoted_name(),
-                    '(%s)' % columns if columns else '',
-                    '%s\n     WITH CHECK OPTION' % query if check else query)
+                    columns and ('(%s)' % columns) or '',
+                    check and ('%s\n     WITH CHECK OPTION' % query) or query)
         else:
             raise fdb.ProgrammingError("Missing required parameter: 'query'.")
     def _get_drop_sql(self,**params):
@@ -3039,7 +3052,7 @@ class View(BaseSchemaItem):
         return 'DROP VIEW %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON VIEW %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$RELATION_NAME']
     def _get_sql(self):
@@ -3154,7 +3167,7 @@ class Trigger(BaseSchemaItem):
         result = 'CREATE TRIGGER %s' % self.get_quoted_name()
         if self._attributes['RDB$RELATION_NAME']:
             result += ' FOR %s' % self.relation.get_quoted_name()
-        result += ' %s\n%s POSITION %d\n%s' % ('ACTIVE' if self.isactive() and not inactive else 'INACTIVE',
+        result += ' %s\n%s POSITION %d\n%s' % ((self.isactive() and not inactive) and 'ACTIVE' or 'INACTIVE',
                                                self.get_type_as_string(),
                                                self.sequence,self.source)
         return result
@@ -3168,7 +3181,7 @@ class Trigger(BaseSchemaItem):
         #
         header = ''
         if active is not None:
-            header += ' ACTIVE' if active else ' INACTIVE'
+            header += active and ' ACTIVE' or ' INACTIVE'
         if action is not None:
             dbaction = action.upper().startswith('ON ')
             if ((dbaction and not self.isdbtrigger())
@@ -3205,7 +3218,7 @@ class Trigger(BaseSchemaItem):
         return 'DROP TRIGGER %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON TRIGGER %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL'  or ("'%s'" % escape_single_quotes(self.description)))
     def _get_action_time(self):
         if self.isddltrigger():
             return (self.trigger_type) & 1
@@ -3234,7 +3247,7 @@ class Trigger(BaseSchemaItem):
         return self._attributes['RDB$FLAGS']
     def _get_valid_blr(self):
         result = self._attributes.get('RDB$VALID_BLR')
-        return bool(result) if result is not None else None
+        return (result is not None) and bool(result) or None
     def _get_engine_name(self):
         return self._attributes.get('RDB$ENGINE_NAME')
     def _get_entrypoint(self):
@@ -3305,7 +3318,7 @@ class Trigger(BaseSchemaItem):
         if self.isddltrigger():
             l.append(TRIGGER_PREFIX_TYPES[self._get_action_time()])
             code = self._get_action_type(1)
-            l.append('ANY DDL STATEMENT' if code == DDL_TRIGGER_ANY else TRIGGER_DDL_TYPES[code])
+            l.append(code == DDL_TRIGGER_ANY and 'ANY DDL STATEMENT' or TRIGGER_DDL_TYPES[code])
         elif self.isdbtrigger():
             l.append('ON '+TRIGGER_DB_TYPES[self.trigger_type & ~TRIGGER_TYPE_DB])
         else:
@@ -3344,7 +3357,7 @@ class ProcedureParameter(BaseSchemaItem):
     def _get_comment_sql(self,**params):
         return 'COMMENT ON PARAMETER %s.%s IS %s' % (self.procedure.get_quoted_name(),
             self.get_quoted_name(),
-            'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+            (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$PARAMETER_NAME']
     def _get_procedure(self):
@@ -3360,7 +3373,7 @@ class ProcedureParameter(BaseSchemaItem):
         if m is None:
             return PROCPAR_DATATYPE
         elif m == 0:
-            return PROCPAR_DATATYPE if self.domain.issystemobject() else PROCPAR_DOMAIN
+            return self.domain.issystemobject() and PROCPAR_DATATYPE or PROCPAR_DOMAIN
         elif m == 1:
             if self._attributes.get('RDB$RELATION_NAME') is None:
                 return PROCPAR_TYPE_OF_DOMAIN
@@ -3378,14 +3391,18 @@ class ProcedureParameter(BaseSchemaItem):
         return result
     def _get_collation(self):
         cid = self._attributes.get('RDB$COLLATION_ID')
-        return (None if cid is None
-                else self.schema.get_collation_by_id(self.domain._attributes['RDB$CHARACTER_SET_ID'],cid))
+        if cid is not None:
+            return self.schema.get_collation_by_id(self.domain._attributes['RDB$CHARACTER_SET_ID'],cid)
+        else:
+            return None
     def _get_mechanism(self):
         return self._attributes.get('RDB$PARAMETER_MECHANISM')
     def _get_column(self):
         rname = self._attributes.get('RDB$RELATION_NAME')
-        return (None if rname is None
-                else self.schema.get_table(rname).get_column(self._attributes['RDB$FIELD_NAME']))
+        if rname is not None:
+            return self.schema.get_table(rname).get_column(self._attributes['RDB$FIELD_NAME'])
+        else:
+           return None
     def _get_package(self):
         return self.schema.get_package(self._attributes.get('RDB$PACKAGE_NAME'))
 
@@ -3427,7 +3444,7 @@ class ProcedureParameter(BaseSchemaItem):
             typedef = 'TYPE OF COLUMN %s.%s' % (self.column.table.get_quoted_name(),
                                                 self.column.get_quoted_name())
         result = '%s %s%s' % (self.get_quoted_name(),typedef,
-                               '' if self.isnullable() else ' NOT NULL')
+                               (not self.isnullable()) and  ' NOT NULL' or '')
         c = self.collation
         if c is not None:
             result += ' COLLATE %s' % c.get_quoted_name()
@@ -3490,8 +3507,8 @@ class Procedure(BaseSchemaItem):
                 result += ' (\n'
                 for p in self.input_params:
                     result += '  %s%s\n' % (p.get_sql_definition(),
-                                            '' if p.sequence+1 == self._attributes['RDB$PROCEDURE_INPUTS']
-                                            else ',')
+                                            p.sequence+1 != self._attributes['RDB$PROCEDURE_INPUTS'] and ',' or ''
+                                           )
                 result += ')\n'
         else:
             result += '\n'
@@ -3502,12 +3519,12 @@ class Procedure(BaseSchemaItem):
                 result += 'RETURNS (\n'
                 for p in self.output_params:
                     result += '  %s%s\n' % (p.get_sql_definition(),
-                                            '' if p.sequence+1 == self._attributes['RDB$PROCEDURE_OUTPUTS']
-                                            else ',')
+                                            p.sequence+1 != self._attributes['RDB$PROCEDURE_OUTPUTS'] and ',' or ''
+                                            )
                 result += ')\n'
-        return result+'AS\n'+(('BEGIN\nEND' if self.proc_type != 1
-                               else 'BEGIN\n  SUSPEND;\nEND')
-                              if no_code else self.source)
+        return result+'AS\n'+(no_code and ( self.proc_type != 1 and 'BEGIN\nEND' or
+                                'BEGIN\n  SUSPEND;\nEND') or
+                              self.source)
     def _get_alter_sql(self,**params):
         self._check_params(params,['input','output','declare','code'])
         inpars = params.get('input')
@@ -3528,7 +3545,7 @@ class Procedure(BaseSchemaItem):
                     header = ' (\n'
                     i = 1
                     for p in inpars:
-                        header += '  %s%s\n' % (p,'' if i == numpars else ',')
+                        header += '  %s%s\n' % (p, i != numpars and ',' or '')
                         i += 1
                     header += ')\n'
             else:
@@ -3545,7 +3562,7 @@ class Procedure(BaseSchemaItem):
                     header += 'RETURNS (\n'
                     i = 1
                     for p in outpars:
-                        header += '  %s%s\n' % (p,'' if i == numpars else ',')
+                        header += '  %s%s\n' % (p, i != numpars and ',' or '')
                         i += 1
                     header += ')\n'
             else:
@@ -3566,9 +3583,9 @@ class Procedure(BaseSchemaItem):
                     c += '  %s\n' % x
             else:
                 c = '%s\n' % code
-            body = '%sAS\n%sBEGIN\n%sEND' % ('' if header else '\n',d,c)
+            body = '%sAS\n%sBEGIN\n%sEND' % ((not header) and '\n' or '',d,c)
         else:
-            body = '%sAS\nBEGIN\nEND' % ('' if header else '\n')
+            body = '%sAS\nBEGIN\nEND' % ((not header) and '\n' or '')
         #
         return 'ALTER PROCEDURE %s%s%s' % (self.get_quoted_name(),header,body)
     def _get_drop_sql(self,**params):
@@ -3576,7 +3593,7 @@ class Procedure(BaseSchemaItem):
         return 'DROP PROCEDURE %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON PROCEDURE %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL'  or ("'%s'" % escape_single_quotes(self.description)))
     def __param_columns(self):
         cols = ['RDB$PARAMETER_NAME','RDB$PROCEDURE_NAME','RDB$PARAMETER_NUMBER',
                 'RDB$PARAMETER_TYPE','RDB$FIELD_SOURCE','RDB$DESCRIPTION',
@@ -3625,7 +3642,7 @@ order by rdb$parameter_number""" % self.__param_columns(),(self.name,))]
         return self._attributes.get('RDB$PROCEDURE_TYPE',0)
     def _get_valid_blr(self):
         result = self._attributes.get('RDB$VALID_BLR')
-        return bool(result) if result is not None else None
+        return result and bool(result) or None
     def _get_privileges(self):
         return [p for p in self.schema.privileges
                 if ((p.subject_name == self.name) and
@@ -3722,7 +3739,7 @@ class Role(BaseSchemaItem):
         return 'DROP ROLE %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON ROLE %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or  ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$ROLE_NAME']
     def _get_owner_name(self):
@@ -3773,7 +3790,7 @@ class FunctionArgument(BaseSchemaItem):
     #--- Protected
 
     def _get_name(self):
-        return self.argument_name if self.argument_name else (self.function.name+
+        return self.argument_name and self.argument_name or (self.function.name+
                                                               '_'+str(self._get_position()))
     def _get_function(self):
         return self.__function
@@ -3782,7 +3799,7 @@ class FunctionArgument(BaseSchemaItem):
         return self._attributes['RDB$ARGUMENT_POSITION']
     def _get_mechanism(self):
         x = self._attributes['RDB$MECHANISM']
-        return None if x is None else abs(x)
+        return (x is not None) and abs(x) or None
     def _get_length(self):
         return self._attributes['RDB$FIELD_LENGTH']
     def _get_scale(self):
@@ -3821,8 +3838,7 @@ class FunctionArgument(BaseSchemaItem):
                 else:
                     l.append(COLUMN_TYPES[self.field_type])
             if self.field_type in (FBT_CHAR,FBT_VARCHAR,FBT_CSTRING):
-                l.append('(%d)' % (self.length if (self.character_length is None)
-                                   else self.character_length))
+                l.append('(%d)' % ((self.character_length is not None) and self.character_length or self.length))
             if self.field_type == FBT_BLOB:
                 if self.sub_type >= 0 and self.sub_type <= MAX_BLOBSUBTYPES:
                     if self.sub_type > 0:
@@ -3850,20 +3866,18 @@ class FunctionArgument(BaseSchemaItem):
         return result
     def _get_collation(self):
         cid = self._attributes.get('RDB$COLLATION_ID')
-        return (None if cid is None
-                else self.schema.get_collation_by_id(self.domain._attributes['RDB$CHARACTER_SET_ID'],cid))
+        return ((cid is not None) and self.schema.get_collation_by_id(self.domain._attributes['RDB$CHARACTER_SET_ID'],cid) or None)
     def _get_argument_mechanism(self):
         return self._attributes.get('RDB$ARGUMENT_MECHANISM')
     def _get_column(self):
         rname = self._attributes.get('RDB$RELATION_NAME')
-        return (None if rname is None
-                else self.schema.get_table(rname).get_column(self._attributes['RDB$FIELD_NAME']))
+        return ((rname is not None) and self.schema.get_table(rname).get_column(self._attributes['RDB$FIELD_NAME']) or None)
     def _get_type_from(self):
         m = self.argument_mechanism
         if m is None:
             return PROCPAR_DATATYPE
         elif m == 0:
-            return PROCPAR_DATATYPE if self.domain.issystemobject() else PROCPAR_DOMAIN
+            return self.domain.issystemobject() and PROCPAR_DATATYPE or PROCPAR_DOMAIN
         elif m == 1:
             if self._attributes.get('RDB$RELATION_NAME') is None:
                 return PROCPAR_TYPE_OF_DOMAIN
@@ -3919,8 +3933,8 @@ class FunctionArgument(BaseSchemaItem):
         "Returns SQL definition for parameter."
         if self.function.isexternal():
             return '%s%s%s' % (self.datatype,
-                               ' BY DESCRIPTOR' if self.isbydescriptor() else '',
-                               ' BY VALUE' if self.isbyvalue() and self.isreturning() else '',
+                               self.isbydescriptor() and ' BY DESCRIPTOR' or '',
+                               (self.isbyvalue() and self.isreturning()) and ' BY VALUE' or '',
                              )
         else:
             typedef = self.datatype
@@ -3931,9 +3945,10 @@ class FunctionArgument(BaseSchemaItem):
             elif self.type_from == PROCPAR_TYPE_OF_COLUMN:
                 typedef = 'TYPE OF COLUMN %s.%s' % (self.column.table.get_quoted_name(),
                                                     self.column.get_quoted_name())
-            result = '%s%s%s' % (self.get_quoted_name()+' ' if not self.isreturning() else '',
+            result = '%s%s%s' % (self.get_quoted_name()+((not self.isreturning()) and ' ' or ''),
                                  typedef,
-                                 '' if self.isnullable() else ' NOT NULL')
+                                 (not self.isnullable() and ' NOT NULL' or '')
+                                )
             c = self.collation
             if c is not None:
                 result += ' COLLATE %s' % c.get_quoted_name()
@@ -3952,7 +3967,10 @@ class FunctionArgument(BaseSchemaItem):
         :param bool any: If True, method returns True if any kind of descriptor
           is used (including BLOB and ARRAY descriptors).
         """
-        return self.mechanism in [2,3,4] if any else self.mechanism == 2
+        if any:
+            return self.mechanism in [2,3,4]
+        else:
+            return self.mechanism in [2,3,4]
     def iswithnull(self):
         "Returns True if argument is passed by reference with NULL support."
         return self.mechanism == 5
@@ -4015,21 +4033,20 @@ class Function(BaseSchemaItem):
         fdef = 'DECLARE EXTERNAL FUNCTION %s\n' % self.get_quoted_name()
         for p in self.arguments:
             fdef += '  %s%s\n' % (p.get_sql_definition(),
-                                  '' if p.position == len(self.arguments) else ',')
+                                  (p.position != len(self.arguments) and ',' or '')
+                                  )
         if self.has_return():
-            fdef += 'RETURNS %s%s\n' % ('PARAMETER %d' % self._attributes['RDB$RETURN_ARGUMENT']
-                                    if self.has_return_argument()
-                                    else self.returns.get_sql_definition(),
-                                    ' FREE_IT' if self.returns.isfreeit() else '')
+            fdef += 'RETURNS %s%s\n' % ('PARAMETER %d' % (self.has_return_argument() and self._attributes['RDB$RETURN_ARGUMENT'] or self.returns.get_sql_definition()),
+                                    self.returns.isfreeit() and ' FREE_IT' or '')
         return "%sENTRY_POINT '%s'\nMODULE_NAME '%s'" % (fdef,self.entrypoint,
                                                           self.module_name)
     def _get_drop_sql(self,**params):
         self._check_params(params,[])
-        return 'DROP%s FUNCTION %s' % (' EXTERNAL' if self.isexternal() else '',
+        return 'DROP%s FUNCTION %s' % (self.isexternal() and ' EXTERNAL' or '',
                                        self.get_quoted_name())
     def _get_comment_sql(self,**params):
         return 'COMMENT ON EXTERNAL FUNCTION %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_create_sql(self,**params):
         self._check_params(params,['no_code'])
         no_code = params.get('no_code')
@@ -4041,12 +4058,12 @@ class Function(BaseSchemaItem):
                 result += ' (\n'
                 for p in self.arguments:
                     result += '  %s%s\n' % (p.get_sql_definition(),
-                                            '' if p.position == len(self.arguments) else ',')
+                                            (p.position != len(self.arguments)) and ',' or '')
                 result += ')\n'
         else:
             result += '\n'
         result += 'RETURNS %s\n' % self.returns.get_sql_definition()
-        return result+'AS\n'+('BEGIN\nEND' if no_code else self.source)
+        return result+'AS\n'+(no_code and 'BEGIN\nEND' or self.source)
     def _get_alter_sql(self,**params):
         self._check_params(params,['arguments','returns','declare','code'])
         arguments = params.get('arguments')
@@ -4068,7 +4085,7 @@ class Function(BaseSchemaItem):
                     header = ' (\n'
                     i = 1
                     for p in arguments:
-                        header += '  %s%s\n' % (p,'' if i == numpars else ',')
+                        header += '  %s%s\n' % (p, (i != numpars) and ',' or '')
                         i += 1
                     header += ')\n'
             else:
@@ -4093,9 +4110,9 @@ class Function(BaseSchemaItem):
                     c += '  %s\n' % x
             else:
                 c = '%s\n' % code
-            body = '%sAS\n%sBEGIN\n%sEND' % ('' if header else '\n',d,c)
+            body = '%sAS\n%sBEGIN\n%sEND' % ((not header) and '\n' or '',d,c)
         else:
-            body = '%sAS\nBEGIN\nEND' % ('' if header else '\n')
+            body = '%sAS\nBEGIN\nEND' % ((not header) and '\n' or '')
         #
         return 'ALTER FUNCTION %s%s%s' % (self.get_quoted_name(),header,body)
     def _load_arguments(self,mock=None):
@@ -4109,7 +4126,7 @@ class Function(BaseSchemaItem):
                          'RDB$ARGUMENT_MECHANISM','RDB$FIELD_NAME','RDB$RELATION_NAME',
                          'RDB$SYSTEM_FLAG','RDB$DESCRIPTION'])
         self.__arguments = [FunctionArgument(self.schema,self,row) for row in
-                            (mock if mock else
+                            (mock and mock or
                             self.schema._select("""select %s from rdb$function_arguments
 where rdb$function_name = ? order by rdb$argument_position""" % ','.join(cols),(self.name,)))]
         rarg = self._attributes['RDB$RETURN_ARGUMENT']
@@ -4126,7 +4143,10 @@ where rdb$function_name = ? order by rdb$argument_position""" % ','.join(cols),(
     def _get_returns(self):
         if self.__arguments is None:
             self._load_arguments()
-        return self.__returns if self.__returns is None else self.__returns()
+        if self.__returns is None:
+            return self.__returns
+        else:
+            self.__returns()
     def _get_arguments(self):
         if self.__arguments is None:
             self._load_arguments()
@@ -4143,7 +4163,7 @@ where rdb$function_name = ? order by rdb$argument_position""" % ','.join(cols),(
         return self._attributes.get('RDB$FUNCTION_ID')
     def _get_valid_blr(self):
         result = self._attributes.get('RDB$VALID_BLR')
-        return bool(result) if result is not None else None
+        return (result is not None) and bool(result) or None
     def _get_security_class(self):
         return self._attributes.get('RDB$SECURITY_CLASS')
     def _get_owner_name(self):
@@ -4185,7 +4205,7 @@ where rdb$function_name = ? order by rdb$argument_position""" % ','.join(cols),(
         visitor.visitFunction(self)
     def isexternal(self):
         "Returns True if function is external UDF, False for PSQL functions."
-        return True if self.module_name else False
+        return self.module_name and True or False
     def has_arguments(self):
         "Returns True if function has input arguments."
         return bool(self.arguments)
@@ -4194,7 +4214,10 @@ where rdb$function_name = ? order by rdb$argument_position""" % ','.join(cols),(
         return (self.returns is not None)
     def has_return_argument(self):
         "Returns True if function returns a value in input argument."
-        return (self.returns.position != 0 if self.returns is not None else False)
+        if self.returns is not None:
+            return self.returns.position != 0
+        else:
+            return False
     def ispackaged(self):
         "Returns True if function is defined in package."
         return bool(self._attributes.get('RDB$PACKAGE_NAME'))
@@ -4260,27 +4283,26 @@ class Shadow(BaseSchemaItem):
 
     def _get_create_sql(self,**params):
         self._check_params(params,[])
-        result = 'CREATE SHADOW %d %s%s' % (self.id,'MANUAL' if self.ismanual()
-                                          else 'AUTO',
-                                          ' CONDITIONAL' if self.isconditional()
-                                          else '')
+        result = 'CREATE SHADOW %d %s%s' % (self.id, self.ismanual() and 'MANUAL' or 'AUTO',
+                                          self.isconditional() and ' CONDITIONAL' or '')
         if len(self.files) == 1:
             result += " '%s'" % self.files[0].filename
         else:
             f = self.files[0]
             result += " '%s'%s\n" % (f.filename,
-                                   ' LENGTH %d' % f.length if f.length > 0 else '')
+                                   (f.length > 0) and (' LENGTH %d' % f.length) or '')
             for f in self.files[1:]:
                 result += "  FILE '%s'%s%s" % (f.filename,
-                            ' STARTING AT %d' % f.start if f.start > 0 else '',
-                            ' LENGTH %d' % f.length if f.length > 0 else '')
+                            (f.start > 0) and (' STARTING AT %d' % f.start) or '',
+                            (f.length > 0) and (' LENGTH %d' % f.length) or ''
+                )
                 if f.sequence < len(self.files)-1:
                     result += '\n'
         return result
     def _get_drop_sql(self,**params):
         self._check_params(params,['preserve'])
         preserve = params.get('preserve')
-        return 'DROP SHADOW %d%s' % (self.id, ' PRESERVE FILE' if preserve else '')
+        return 'DROP SHADOW %d%s' % (self.id, preserve and ' PRESERVE FILE'  or '')
     def _get_name(self):
         return 'SHADOW_%d' % self.id
     def _get_id(self):
@@ -4345,7 +4367,7 @@ class Privilege(BaseSchemaItem):
         self._check_params(params,['grantors'])
         grantors = params.get('grantors',['SYSDBA'])
         privileges = {'S':'SELECT','I':'INSERT','U':'UPDATE','D':'DELETE','R':'REFERENCES'}
-        admin_option = ' WITH GRANT OPTION' if self.has_grant() else ''
+        admin_option = self.has_grant() and ' WITH GRANT OPTION' or ''
         if self.privilege in privileges:
             privilege = privileges[self.privilege]
             if self.field_name is not None:
@@ -4355,7 +4377,7 @@ class Privilege(BaseSchemaItem):
             privilege = 'EXECUTE ON PROCEDURE '
         else: # role membership
             privilege = ''
-            admin_option = ' WITH ADMIN OPTION' if self.has_grant() else ''
+            admin_option = self.has_grant() and ' WITH ADMIN OPTION' or ''
         user = self.user
         if isinstance(user,Procedure):
             utype = 'PROCEDURE '
@@ -4378,7 +4400,7 @@ class Privilege(BaseSchemaItem):
         if option_only and not self.has_grant():
             raise fdb.ProgrammingError("Can't revoke grant option that wasn't granted.")
         privileges = {'S':'SELECT','I':'INSERT','U':'UPDATE','D':'DELETE','R':'REFERENCES'}
-        admin_option = 'GRANT OPTION FOR ' if self.has_grant() and option_only else ''
+        admin_option = (self.has_grant() and option_only) and 'GRANT OPTION FOR '  or ''
         if self.privilege in privileges:
             privilege = privileges[self.privilege]
             if self.field_name is not None:
@@ -4388,7 +4410,7 @@ class Privilege(BaseSchemaItem):
             privilege = 'EXECUTE ON PROCEDURE '
         else: # role membership
             privilege = ''
-            admin_option = 'ADMIN OPTION FOR' if self.has_grant() and option_only else ''
+            admin_option = (self.has_grant() and option_only) and 'ADMIN OPTION FOR' or ''
         user = self.user
         if isinstance(user,Procedure):
             utype = 'PROCEDURE '
@@ -4503,21 +4525,21 @@ class Package(BaseSchemaItem):
     def _get_create_sql(self,**params):
         self._check_params(params,['body'])
         body = params.get('body')
-        cbody = 'BODY ' if body else ''
+        cbody = body and 'BODY ' or ''
         result = 'CREATE PACKAGE %s%s' % (cbody, self.get_quoted_name())
-        return result+'\nAS\n'+(self.body if body else self.header)
+        return result+'\nAS\n'+(body and self.body or self.header)
     def _get_alter_sql(self,**params):
         self._check_params(params,['header'])
         header = params.get('header')
         if not header:
             hdr = ''
         else:
-            hdr = '\n'.join(header) if isinstance(header,fdb.ListType) else header
+            hdr = isinstance(header,fdb.ListType) and '\n'.join(header) or header
         return 'ALTER PACKAGE %s\nAS\nBEGIN\n%s\nEND' % (self.get_quoted_name(),hdr)
     def _get_drop_sql(self,**params):
         self._check_params(params,['body'])
         body = params.get('body')
-        cbody = 'BODY ' if body else ''
+        cbody = body and 'BODY ' or ''
         return 'DROP PACKAGE %s%s' % (cbody, self.get_quoted_name())
     def _get_name(self):
         return self._attributes['RDB$PACKAGE_NAME']
@@ -4558,7 +4580,7 @@ class Package(BaseSchemaItem):
         visitor.visitPackage(self)
     def has_valid_body(self):
         result = self._attributes.get('RDB$VALID_BODY_FLAG')
-        return bool(result) if result is not None else None
+        return (result and not None) and bool(result) or None
 
 class BackupHistory(BaseSchemaItem):
     """Represents entry of history for backups performed
@@ -4646,7 +4668,7 @@ class Filter(BaseSchemaItem):
         return 'DROP FILTER %s' % self.get_quoted_name()
     def _get_comment_sql(self,**params):
         return 'COMMENT ON FILTER %s IS %s' % (self.get_quoted_name(),
-          'NULL' if self.description is None else "'%s'" % escape_single_quotes(self.description))
+          (self.description is None) and 'NULL' or ("'%s'" % escape_single_quotes(self.description)))
     def _get_name(self):
         return self._attributes['RDB$FUNCTION_NAME']
     def _get_module_name(self):

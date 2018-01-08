@@ -57,7 +57,11 @@ if PYTHON_MAJOR_VER == 3:
     def s(st):
         return st
 
-    ord2 = lambda x: x if type(x) == IntType else ord(x)
+    def ord2(x):
+        if type(x) == IntType:
+            return x
+        else:
+            return ord(x)
 
     if sys.version_info[1] <= 1:
         def int2byte(i):
@@ -82,7 +86,7 @@ if PYTHON_MAJOR_VER == 3:
     xrange = range
 
 else:
-    from Queue import PriorityQueue
+    from utils import PriorityQueue
     def nativestr(st,charset="latin-1"):
         if st == None:
             return st

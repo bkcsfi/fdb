@@ -297,7 +297,7 @@ class Connection(object):
         if not self._svc_handle:
             raise ProgrammingError("Connection object is detached from service manager")
     def __get_closed(self):
-        return True if self._svc_handle else False
+        return self._svc_handle and True or False
     def __get_fetching(self):
         return self.__fetching
     def __read_buffer(self, init=''):
@@ -506,9 +506,8 @@ class Connection(object):
             raise ValueError(
                 'Since you passed %d %s, you must %s corresponding %s.'
                 % (stringsCount, string_caption,
-                   ('pass %d' % requiredNumbersCount
-                    if requiredNumbersCount > 0
-                    else 'not pass any'),
+                   ('pass %d' % (requiredNumbersCount > 0) and requiredNumbersCount or 
+                    'not pass any'),
                    number_caption)
             )
     def _exclude_elements_of_types(self, seq, types_to_exclude):
@@ -1284,6 +1283,9 @@ class Connection(object):
             numCType='B'
           )
 
+        # This is necessary
+        request.add_code(ibase.isc_spb_verbose)
+
         # Options bitmask:
         request.add_numeric(ibase.isc_spb_options, optionMask)
 
@@ -1306,8 +1308,7 @@ class Connection(object):
             if request_length > 0:
                 request_length = min([request_length, 65500])
                 raw = backup_stream.read(request_length)
-                if len(spb) < request_length+4:
-                    spb = ctypes.create_string_buffer(request_length+4)
+                spb = ctypes.create_string_buffer(1+2+request_length+1)
                 spb[0] = chr(ibase.isc_info_svc_line)
                 spb[1:3] = fdb.uint_to_bytes(len(raw), 2)
                 spb[3:3+len(raw)] = raw
@@ -1323,8 +1324,7 @@ class Connection(object):
                                       self._isc_status,
                                       "Services/isc_service_query:")
             i = 0
-            request_length = 0
-            while self._result_buffer[i] != chr(ibase.isc_info_end):
+            while self._result_buffer[i] != ibase.isc_info_end:
                 code = ibase.ord2(self._result_buffer[i])
                 i += 1
                 if code == ibase.isc_info_svc_stdin:
@@ -1332,11 +1332,12 @@ class Connection(object):
                 elif code == ibase.isc_info_svc_line:
                     (line, i) = self._extract_string(self._result_buffer, i)
                 else:
-                    pass
+                    break
             if not wait:
                 stop = (request_length == 0) and (len(line) == 0)
             elif request_length != 0:
                 wait = False
+
     # nbackup methods:
     def nbackup(self, source_database,
                 dest_filename,

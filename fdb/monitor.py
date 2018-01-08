@@ -331,7 +331,7 @@ class BaseInfoItem(object):
     #: Weak reference to parent :class:`Monitor` instance.
     monitor = None
     def __init__(self,monitor,attributes):
-        self.monitor = monitor if type(monitor) == weakref.ProxyType else weakref.proxy(monitor)
+        self.monitor = (type(monitor) == weakref.ProxyType) and monitor or weakref.proxy(monitor)
         self._attributes = dict(attributes)
 
     #--- protected
@@ -687,7 +687,7 @@ class StatementInfo(BaseInfoItem):
         return self.monitor.get_attachment(self._attributes['MON$ATTACHMENT_ID'])
     def __get_transaction(self):
         tr = self._attributes['MON$TRANSACTION_ID']
-        return None if tr is None else self.monitor.get_transaction(tr)
+        return (tr is not None) and self.monitor.get_transaction(tr) or None
     def __get_state(self):
         return self._attributes['MON$STATE']
     def __get_timestamp(self):
@@ -1046,7 +1046,7 @@ class ContextVariableInfo(BaseInfoItem):
         return self.monitor.get_attachment(self._attributes['MON$ATTACHMENT_ID'])
     def __get_transaction(self):
         tr = self._attributes['MON$TRANSACTION_ID']
-        return None if tr is None else self.monitor.get_transaction(tr)
+        return (tr is not None) and self.monitor.get_transaction(tr) or None
     def __get_name(self):
         return self._attributes['MON$VARIABLE_NAME']
     def __get_value(self):

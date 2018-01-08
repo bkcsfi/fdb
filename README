@@ -1,3 +1,6 @@
+This repo contains a clone of the official FDB package that has been modified to work with Python 2.3
+Note that some tests do not pass and it's possible some fdb features do not work
+
 FDB package is a set of Firebird RDBMS bindings for Python. It works on Python 2.6+ and Python 3.x.
 
 FDB is replacement for discontinued KInterbasDB library, and as such it's designed to be as much compatible 
