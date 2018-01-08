@@ -1073,7 +1073,13 @@ fb_dbg_arg_input = 0
 fb_dbg_arg_output = 1
 
 FB_API_HANDLE = c_uint
-if platform.architecture() == ('64bit', 'WindowsPE'):
+
+FORCE_ARCHITECTURE = os.getenv(FDB_FORCE_ARCHITECTURE, None)
+if FORCE_ARCHITECTURE:
+    architecture = FORCE_ARCHITECTURE.split(':')
+else:
+    architecture = platform.architecture()
+if architecture == ('64bit', 'WindowsPE'):
     intptr_t = c_longlong
     uintptr_t = c_ulonglong
 else:
