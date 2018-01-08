@@ -1074,7 +1074,7 @@ fb_dbg_arg_output = 1
 
 FB_API_HANDLE = c_uint
 
-FORCE_ARCHITECTURE = os.getenv(FDB_FORCE_ARCHITECTURE, None)
+FORCE_ARCHITECTURE = os.getenv('FDB_FORCE_ARCHITECTURE', None)
 if FORCE_ARCHITECTURE:
     architecture = FORCE_ARCHITECTURE.split(':')
 else:
