@@ -2765,8 +2765,8 @@ class PreparedStatement(object):
                                                            bytes_actually_read,
                                                            min(segment_size,
                                                                blob_length - bytes_read),
-                                                           ctypes.byref(
-                                                               blob, bytes_read))
+                                                           ctypes.byref(blob)
+                                                        )
                             if status != 0:
                                 if ((status == isc_segment)
                                     and allow_incomplete_segment_read):
