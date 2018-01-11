@@ -1306,7 +1306,7 @@ class Connection(object):
         if info_code != fb_info_page_contents:
             buf_size = 256
         else:
-	       buf_size = self.page_size + 10
+            buf_size = self.page_size + 10
         request_buffer = bs([info_code])
         if info_code == fb_info_page_contents:
             request_buffer += int_to_bytes(2, 2)
@@ -2765,8 +2765,8 @@ class PreparedStatement(object):
                                                            bytes_actually_read,
                                                            min(segment_size,
                                                                blob_length - bytes_read),
-                                                           ctypes.byref(blob)
-                                                        )
+                                                           ctypes.byref(
+                                                               blob, bytes_read))
                             if status != 0:
                                 if ((status == isc_segment)
                                     and allow_incomplete_segment_read):
@@ -3290,7 +3290,7 @@ class PreparedStatement(object):
             if self.cursor:
                 connection = self.cursor._connection
             else:
-	        connection = None
+            connection = None
             if (not connection) or (connection and not connection.closed):
                 api.isc_dsql_free_statement(self._isc_status, stmt_handle, ibase.DSQL_drop)
                 if (db_api_error(self._isc_status)
