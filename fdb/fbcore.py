@@ -3290,7 +3290,7 @@ class PreparedStatement(object):
             if self.cursor:
                 connection = self.cursor._connection
             else:
-            connection = None
+                connection = None
             if (not connection) or (connection and not connection.closed):
                 api.isc_dsql_free_statement(self._isc_status, stmt_handle, ibase.DSQL_drop)
                 if (db_api_error(self._isc_status)
